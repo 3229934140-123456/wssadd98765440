@@ -132,7 +132,7 @@ export default function ToothRecord() {
       showToast('请至少选择一颗牙位并完成「已封闭」步骤', 'error');
       return;
     }
-    if (missingSteps.length > 0) {
+    if (!completionStats.allDone) {
       setShowMissingCheck(true);
       return;
     }
@@ -419,7 +419,7 @@ export default function ToothRecord() {
         </div>
 
         <div className="xl:col-span-4 space-y-6">
-          {showSlip || isCompleted ? (
+          {showSlip && isCompleted ? (
             <div
               className="animate-fade-in-up"
               style={{ animationDelay: '100ms' }}
@@ -441,6 +441,67 @@ export default function ToothRecord() {
                   <ReviewPlanPanel child={child} record={record} followup={followup} />
                 </div>
               )}
+            </div>
+          ) : !isCompleted && record.selectedTeeth.length > 0 && !completionStats.allDone ? (
+            <div
+              className="card p-6 animate-fade-in-up"
+              style={{ animationDelay: '100ms' }}
+            >
+              <h3 className="font-semibold text-slate-800 mb-4 leading-tight flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-warm-500" strokeWidth={1.8} />
+                操作质控检查
+              </h3>
+
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="p-3 rounded-xl bg-medical-50 border border-medical-100">
+                    <div className="text-2xl font-bold text-medical-700 tabular-nums">
+                      {record.selectedTeeth.length}
+                    </div>
+                    <div className="text-xs text-medical-600 mt-0.5">已选牙位</div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-mint-50 border border-mint-100">
+                    <div className="text-2xl font-bold text-mint-700 tabular-nums">
+                      {completionStats.sealedCount}
+                    </div>
+                    <div className="text-xs text-mint-600 mt-0.5">已完成封闭</div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-warm-50 border border-warm-100">
+                    <div className="text-2xl font-bold text-warm-700 tabular-nums">
+                      {missingSteps.length}
+                    </div>
+                    <div className="text-xs text-warm-600 mt-0.5">待补项</div>
+                  </div>
+                </div>
+
+                {record.selectedTeeth
+                  .sort((a, b) => Number(a) - Number(b))
+                  .map((tooth) => {
+                    const toothMissing = missingSteps.filter((m) => m.tooth === tooth);
+                    if (toothMissing.length === 0) return null;
+                    return (
+                      <div key={tooth} className="p-2.5 rounded-lg bg-warm-50/60 border border-warm-100 flex items-center gap-2">
+                        <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg font-bold text-xs ${
+                          ['16','26','36','46'].includes(tooth) ? 'bg-warm-500 text-white' : 'bg-white text-warm-700 ring-1 ring-warm-200'
+                        }`}>
+                          {tooth}
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {toothMissing.map((m) => (
+                            <span key={m.step} className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-white text-warm-600 ring-1 ring-warm-200">
+                              {m.stepLabel}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-100 text-xs text-rose-700">
+                  <p className="font-medium mb-0.5">⚠ 质控要求</p>
+                  <p>全部已选牙位的四步操作补齐后，才能生成确认单和回访计划。</p>
+                </div>
+              </div>
             </div>
           ) : (
             <div
@@ -478,16 +539,16 @@ export default function ToothRecord() {
       {showMissingCheck && record && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
-            <div className="px-6 py-5 bg-gradient-to-r from-warm-500 to-warm-600 text-white">
+            <div className="px-6 py-5 bg-gradient-to-r from-rose-500 to-rose-600 text-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
                     <AlertTriangle className="w-5 h-5" strokeWidth={2} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold">操作前检查 · 有未完成步骤</h3>
+                    <h3 className="text-lg font-bold">质控拦截 · 存在未完成步骤</h3>
                     <p className="text-sm text-white/80 mt-0.5">
-                      共 {missingSteps.length} 项待完成，请确认是否继续
+                      共 {missingSteps.length} 项待完成，必须全部补齐后才能完成操作
                     </p>
                   </div>
                 </div>
@@ -513,17 +574,17 @@ export default function ToothRecord() {
                     return (
                       <div
                         key={tooth}
-                        className="p-3.5 rounded-xl bg-warm-50 border border-warm-100"
+                        className="p-3.5 rounded-xl bg-rose-50 border border-rose-100"
                       >
                         <div className="flex items-center gap-2.5 mb-2">
                           <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg font-bold text-sm ${
                             ['16','26','36','46'].includes(tooth)
                               ? 'bg-warm-500 text-white'
-                              : 'bg-white text-warm-700 ring-1 ring-warm-200'
+                              : 'bg-white text-rose-700 ring-1 ring-rose-200'
                           }`}>
                             {tooth}
                           </span>
-                          <span className="font-medium text-warm-800">
+                          <span className="font-medium text-rose-800">
                             缺 {toothMissing.length} 步
                           </span>
                         </div>
@@ -531,7 +592,7 @@ export default function ToothRecord() {
                           {toothMissing.map((m) => (
                             <span
                               key={m.step}
-                              className="px-2 py-1 rounded-md bg-white text-warm-600 text-xs font-medium ring-1 ring-warm-200"
+                              className="px-2 py-1 rounded-md bg-white text-rose-600 text-xs font-medium ring-1 ring-rose-200"
                             >
                               {m.stepLabel}
                             </span>
@@ -542,25 +603,19 @@ export default function ToothRecord() {
                   })}
               </div>
 
-              <div className="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
-                <p className="font-medium text-slate-700 mb-1">💡 提示</p>
-                <p>确认单只会展示真正完成「封闭」的牙位，未完成的牙位不会出现在确认单中。</p>
+              <div className="mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                <p className="font-medium mb-1">⚠ 质控规则</p>
+                <p>所有已选牙位必须完成「清洁→酸蚀→封闭→复查」四步操作后才能生成确认单和回访计划。请返回操作面板补齐缺失步骤。</p>
               </div>
             </div>
 
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-center">
               <button
                 onClick={() => setShowMissingCheck(false)}
-                className="btn-secondary"
+                className="btn-primary w-full justify-center"
               >
-                返回继续操作
-              </button>
-              <button
-                onClick={doComplete}
-                disabled={completing}
-                className="btn-primary"
-              >
-                {completing ? '保存中…' : '仍要完成操作'}
+                <ArrowLeft className="w-4 h-4" strokeWidth={2} />
+                返回补录缺失步骤
               </button>
             </div>
           </div>

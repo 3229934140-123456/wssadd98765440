@@ -12,9 +12,10 @@ import {
   Search,
   Download,
   Printer,
+  AlertTriangle,
 } from 'lucide-react';
-import type { ChildStatus, SourceType } from '@/types';
-import { SOURCE_OPTIONS, CHILD_STATUS_LABEL } from '@/types';
+import type { ChildStatus, SourceType, ToothStep } from '@/types';
+import { SOURCE_OPTIONS, CHILD_STATUS_LABEL, STEP_ORDER, FOLLOWUP_STATUS_LABEL } from '@/types';
 import StatusBadge from '@/components/common/StatusBadge';
 import EmptyState from '@/components/common/EmptyState';
 import { useAppStore } from '@/store/useAppStore';
@@ -39,6 +40,8 @@ const SOURCE_COLORS: Record<string, string> = {
 
 export default function ChildrenList() {
   const children = useAppStore((s) => s.children);
+  const toothRecords = useAppStore((s) => s.toothRecords);
+  const followups = useAppStore((s) => s.followups);
   const removeChild = useAppStore((s) => s.removeChild);
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -95,19 +98,46 @@ export default function ChildrenList() {
       showToast('当前没有可导出的数据', 'info');
       return;
     }
-    const headers = ['序号', '姓名', '年龄', '家长电话', '学校/幼儿园', '来源渠道', '是否首次', '状态', '登记时间', '备注'];
-    const rows = todayList.map((c, idx) => [
-      idx + 1,
-      c.name,
-      c.age,
-      c.parentPhone,
-      c.school || '—',
-      c.source,
-      c.isFirst ? '是' : '否',
-      CHILD_STATUS_LABEL[c.status],
-      formatTime(c.createdAt),
-      c.remark || '',
-    ]);
+    const headers = ['序号', '姓名', '年龄', '家长电话', '学校/幼儿园', '来源渠道', '是否首次', '状态', '已选牙位', '完成牙位', '待补项数', '复查日期', '回访状态', '登记时间', '备注'];
+    const rows = todayList.map((c, idx) => {
+      const tr = toothRecords.find((r) => r.childId === c.id);
+      const fu = followups.find((f) => f.childId === c.id);
+      let selectedCount = 0;
+      let doneCount = 0;
+      let missingCount = 0;
+      let reviewDate = '—';
+      let followupStatus = '—';
+      if (tr) {
+        selectedCount = tr.selectedTeeth.length;
+        doneCount = tr.selectedTeeth.filter((t) =>
+          STEP_ORDER.every((s) => tr.steps.find((st: ToothStep) => st.tooth === t && st.step === s)?.completed)
+        ).length;
+        missingCount = selectedCount * STEP_ORDER.length - tr.selectedTeeth.reduce((acc, t) =>
+          acc + STEP_ORDER.filter((s) => tr.steps.find((st: ToothStep) => st.tooth === t && st.step === s)?.completed).length, 0
+        );
+        reviewDate = tr.reviewDate || '—';
+      }
+      if (fu) {
+        followupStatus = FOLLOWUP_STATUS_LABEL[fu.status];
+      }
+      return [
+        idx + 1,
+        c.name,
+        c.age,
+        c.parentPhone,
+        c.school || '—',
+        c.source,
+        c.isFirst ? '是' : '否',
+        CHILD_STATUS_LABEL[c.status],
+        selectedCount,
+        doneCount,
+        missingCount,
+        reviewDate,
+        followupStatus,
+        formatTime(c.createdAt),
+        c.remark || '',
+      ];
+    });
 
     const csvContent = [
       headers.join(','),
@@ -334,6 +364,46 @@ export default function ChildrenList() {
                     {c.source}
                   </span>
                 </div>
+
+                {c.status === 'in_progress' && (() => {
+                  const tr = toothRecords.find((r) => r.childId === c.id);
+                  if (!tr || tr.selectedTeeth.length === 0) return null;
+                  const doneCount = tr.selectedTeeth.filter((t) =>
+                    STEP_ORDER.every((s) => tr.steps.find((st: ToothStep) => st.tooth === t && st.step === s)?.completed)
+                  ).length;
+                  const total = tr.selectedTeeth.length;
+                  const missing = total * STEP_ORDER.length - tr.selectedTeeth.reduce((acc, t) =>
+                    acc + STEP_ORDER.filter((s) => tr.steps.find((st: ToothStep) => st.tooth === t && st.step === s)?.completed).length, 0
+                  );
+                  const pct = Math.round((doneCount / total) * 100);
+                  return (
+                    <div className="xl:col-span-1">
+                      <div className="flex items-center gap-2 text-xs">
+                        <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden min-w-[48px]">
+                          <div
+                            className={clsx(
+                              'h-full rounded-full transition-all',
+                              pct === 100 ? 'bg-mint-500' : 'bg-warm-500'
+                            )}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <span className={clsx(
+                          'font-semibold tabular-nums whitespace-nowrap',
+                          pct === 100 ? 'text-mint-600' : 'text-warm-600'
+                        )}>
+                          {doneCount}/{total}
+                        </span>
+                      </div>
+                      {missing > 0 && (
+                        <div className="flex items-center gap-1 mt-0.5 text-[10px] text-warm-600">
+                          <AlertTriangle className="w-3 h-3" strokeWidth={2} />
+                          差{missing}项需补完
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="shrink-0 flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity no-print">

@@ -81,19 +81,23 @@ export default function ToothChart({ selectedTeeth, onToggle, disabled }: Props)
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M7 16l-4-4m0 0l4-4m-4 4h18" />
           </svg>
-          左右可滑动查看完整牙列
+          ← 左右滑动查看完整牙列 →
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
           </svg>
         </div>
       </div>
 
-      <div className="relative overflow-x-auto pb-2 -mx-6 px-6">
-        <div className="min-w-[960px] w-full">
+      <div className="overflow-x-auto pb-3 -mx-6 px-6 scroll-smooth"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        <div style={{ minWidth: `${svgW}px`, width: '100%', maxWidth: `${svgW * 1.3}px` }}>
           <svg
             viewBox={`0 0 ${svgW} ${svgH}`}
-            className="w-full h-auto"
-            preserveAspectRatio="xMidYMid meet"
+            width="100%"
+            height={svgH}
+            preserveAspectRatio="xMinYMid meet"
+            style={{ display: 'block' }}
           >
             <defs>
               <linearGradient id="toothFill" x1="0" y1="0" x2="0" y2="1">
@@ -244,6 +248,14 @@ export default function ToothChart({ selectedTeeth, onToggle, disabled }: Props)
                   )}
                   style={{ transformOrigin: `${cx}px ${y + cellH / 2}px` }}
                 >
+                  <rect
+                    x={x}
+                    y={y}
+                    width={cellW}
+                    height={cellH}
+                    fill="transparent"
+                    className="pointer-events-auto"
+                  />
                   {!selected && p.isKey && (
                     <ellipse
                       cx={cx}
