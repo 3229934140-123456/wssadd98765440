@@ -18,8 +18,9 @@ import StatusBadge from '@/components/common/StatusBadge';
 import ToothChart from '@/components/Tooth/ToothChart';
 import StepPanel from '@/components/Tooth/StepPanel';
 import ConfirmationSlip from '@/components/Tooth/ConfirmationSlip';
+import ReviewPlanPanel from '@/components/Tooth/ReviewPlanPanel';
 import { addDaysISO, formatDate, formatTime, todayISO } from '@/utils/date';
-import { KEY_TEETH, STEP_ORDER } from '@/types';
+import { KEY_TEETH, STEP_ORDER, STEP_LABELS } from '@/types';
 import type { ToothStep } from '@/types';
 import { clsx } from 'clsx';
 
@@ -50,6 +51,10 @@ export default function ToothRecord() {
     s.toothRecords.find((r) => r.id === recordId)
   );
 
+  const followup = useAppStore((s) =>
+    recordId ? s.followups.find((f) => f.toothRecordId === recordId) : undefined
+  );
+
   const completionStats = useMemo(() => {
     if (!record) return { sealedCount: 0, allDone: false, canComplete: false };
     const sealedCount = record.selectedTeeth.filter((t) =>
@@ -72,6 +77,22 @@ export default function ToothRecord() {
     };
   }, [record]);
 
+  const missingSteps = useMemo(() => {
+    if (!record) return [] as { tooth: string; step: string; stepLabel: string }[];
+    const missing: { tooth: string; step: string; stepLabel: string }[] = [];
+    record.selectedTeeth.forEach((tooth) => {
+      STEP_ORDER.forEach((step) => {
+        const found = record.steps.find(
+          (s: ToothStep) => s.tooth === tooth && s.step === step
+        );
+        if (!found?.completed) {
+          missing.push({ tooth, step, stepLabel: STEP_LABELS[step] });
+        }
+      });
+    });
+    return missing;
+  }, [record]);
+
   const DEFAULT_ADVICE =
     '1. 封闭后2小时内请勿进食过硬、过粘食物；\n' +
     '2. 24小时内尽量食用软食，避免咀嚼冰块、坚果等硬物；\n' +
@@ -81,6 +102,7 @@ export default function ToothRecord() {
 
   const [showSlip, setShowSlip] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [showMissingCheck, setShowMissingCheck] = useState(false);
 
   if (!child) {
     return (
@@ -110,6 +132,15 @@ export default function ToothRecord() {
       showToast('请至少选择一颗牙位并完成「已封闭」步骤', 'error');
       return;
     }
+    if (missingSteps.length > 0) {
+      setShowMissingCheck(true);
+      return;
+    }
+    doComplete();
+  };
+
+  const doComplete = () => {
+    if (!record) return;
     if (!record.doctorAdvice.trim()) {
       if (confirm('尚未填写医生建议，是否使用默认建议内容？')) {
         setDoctorAdvice(record.id, DEFAULT_ADVICE);
@@ -118,6 +149,7 @@ export default function ToothRecord() {
       }
     }
     setCompleting(true);
+    setShowMissingCheck(false);
     setTimeout(() => {
       completeToothRecord(record.id);
       setCompleting(false);
@@ -404,6 +436,11 @@ export default function ToothRecord() {
                   </button>
                 </div>
               )}
+              {isCompleted && followup && (
+                <div className="mt-6">
+                  <ReviewPlanPanel child={child} record={record} followup={followup} />
+                </div>
+              )}
             </div>
           ) : (
             <div
@@ -437,6 +474,98 @@ export default function ToothRecord() {
           )}
         </div>
       </div>
+
+      {showMissingCheck && record && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+            <div className="px-6 py-5 bg-gradient-to-r from-warm-500 to-warm-600 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <AlertTriangle className="w-5 h-5" strokeWidth={2} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold">操作前检查 · 有未完成步骤</h3>
+                    <p className="text-sm text-white/80 mt-0.5">
+                      共 {missingSteps.length} 项待完成，请确认是否继续
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowMissingCheck(false)}
+                  className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" strokeLinecap="round" />
+                    <line x1="6" y1="6" x2="18" y2="18" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="px-6 py-5 max-h-[400px] overflow-y-auto">
+              <div className="space-y-3">
+                {record.selectedTeeth
+                  .sort((a, b) => Number(a) - Number(b))
+                  .map((tooth) => {
+                    const toothMissing = missingSteps.filter((m) => m.tooth === tooth);
+                    if (toothMissing.length === 0) return null;
+                    return (
+                      <div
+                        key={tooth}
+                        className="p-3.5 rounded-xl bg-warm-50 border border-warm-100"
+                      >
+                        <div className="flex items-center gap-2.5 mb-2">
+                          <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg font-bold text-sm ${
+                            ['16','26','36','46'].includes(tooth)
+                              ? 'bg-warm-500 text-white'
+                              : 'bg-white text-warm-700 ring-1 ring-warm-200'
+                          }`}>
+                            {tooth}
+                          </span>
+                          <span className="font-medium text-warm-800">
+                            缺 {toothMissing.length} 步
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 ml-10.5">
+                          {toothMissing.map((m) => (
+                            <span
+                              key={m.step}
+                              className="px-2 py-1 rounded-md bg-white text-warm-600 text-xs font-medium ring-1 ring-warm-200"
+                            >
+                              {m.stepLabel}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              <div className="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
+                <p className="font-medium text-slate-700 mb-1">💡 提示</p>
+                <p>确认单只会展示真正完成「封闭」的牙位，未完成的牙位不会出现在确认单中。</p>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setShowMissingCheck(false)}
+                className="btn-secondary"
+              >
+                返回继续操作
+              </button>
+              <button
+                onClick={doComplete}
+                disabled={completing}
+                className="btn-primary"
+              >
+                {completing ? '保存中…' : '仍要完成操作'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -90,7 +90,7 @@ const ConfirmationSlip = forwardRef<HTMLDivElement, Props>(
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {record.selectedTeeth
+                  {completedTeeth
                     .sort((a, b) => Number(a) - Number(b))
                     .map((tooth) => {
                       const allDone = STEP_ORDER.every((s) => hasStep(tooth, s));

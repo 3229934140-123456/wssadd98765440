@@ -10,13 +10,16 @@ import {
   Tag,
   Clock,
   Search,
+  Download,
+  Printer,
 } from 'lucide-react';
-import type { ChildStatus } from '@/types';
+import type { ChildStatus, SourceType } from '@/types';
+import { SOURCE_OPTIONS, CHILD_STATUS_LABEL } from '@/types';
 import StatusBadge from '@/components/common/StatusBadge';
 import EmptyState from '@/components/common/EmptyState';
 import { useAppStore } from '@/store/useAppStore';
 import { useToast } from '@/components/common/Toast';
-import { isToday, formatTime } from '@/utils/date';
+import { isToday, formatTime, formatDateCN, nowISO } from '@/utils/date';
 import { clsx } from 'clsx';
 
 const STATUS_FILTERS: { label: string; value: ChildStatus | 'all' }[] = [
@@ -42,12 +45,26 @@ export default function ChildrenList() {
 
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<ChildStatus | 'all'>('all');
+  const [sourceFilter, setSourceFilter] = useState<SourceType | 'all'>('all');
+  const [schoolFilter, setSchoolFilter] = useState<string>('all');
+
+  const schoolOptions = useMemo(() => {
+    const schools = new Set<string>();
+    children.forEach((c) => {
+      if (isToday(c.createdAt) && c.school) {
+        schools.add(c.school);
+      }
+    });
+    return Array.from(schools).sort();
+  }, [children]);
 
   const todayList = useMemo(
     () =>
       children.filter((c) => {
         if (!isToday(c.createdAt)) return false;
         if (status !== 'all' && c.status !== status) return false;
+        if (sourceFilter !== 'all' && c.source !== sourceFilter) return false;
+        if (schoolFilter !== 'all' && c.school !== schoolFilter) return false;
         if (query.trim()) {
           const q = query.trim().toLowerCase();
           return (
@@ -58,7 +75,7 @@ export default function ChildrenList() {
         }
         return true;
       }),
-    [children, query, status]
+    [children, query, status, sourceFilter, schoolFilter]
   );
 
   const countByStatus = (s: ChildStatus | 'all') => {
@@ -73,23 +90,89 @@ export default function ChildrenList() {
     }
   };
 
+  const exportCSV = () => {
+    if (todayList.length === 0) {
+      showToast('当前没有可导出的数据', 'info');
+      return;
+    }
+    const headers = ['序号', '姓名', '年龄', '家长电话', '学校/幼儿园', '来源渠道', '是否首次', '状态', '登记时间', '备注'];
+    const rows = todayList.map((c, idx) => [
+      idx + 1,
+      c.name,
+      c.age,
+      c.parentPhone,
+      c.school || '—',
+      c.source,
+      c.isFirst ? '是' : '否',
+      CHILD_STATUS_LABEL[c.status],
+      formatTime(c.createdAt),
+      c.remark || '',
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row) =>
+        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+      ),
+    ].join('\n');
+
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `今日登记名单_${formatDateCN(nowISO())}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast(`已导出 ${todayList.length} 条登记记录`, 'success');
+  };
+
+  const printList = () => {
+    if (todayList.length === 0) {
+      showToast('当前没有可打印的数据', 'info');
+      return;
+    }
+    window.print();
+  };
+
   return (
     <div
-      className="card animate-fade-in-up"
+      className="card animate-fade-in-up print-list"
       style={{ animationDelay: '120ms' }}
     >
-      <div className="p-5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="font-semibold text-slate-800 leading-tight flex items-center gap-2">
-            <User className="w-5 h-5 text-medical-500" strokeWidth={1.8} />
-            今日登记列表
-            <span className="ml-1.5 text-sm font-normal text-slate-500">
-              共 {todayList.length} 位儿童
-            </span>
-          </h3>
+      <div className="p-5 border-b border-slate-100 space-y-4 no-print">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="font-semibold text-slate-800 leading-tight flex items-center gap-2">
+              <User className="w-5 h-5 text-medical-500" strokeWidth={1.8} />
+              今日登记列表
+              <span className="ml-1.5 text-sm font-normal text-slate-500">
+                共 {todayList.length} 位儿童
+              </span>
+            </h3>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={exportCSV}
+              className="btn-secondary text-sm py-2"
+            >
+              <Download className="w-4 h-4" strokeWidth={2} />
+              导出 CSV
+            </button>
+            <button
+              onClick={printList}
+              className="btn-secondary text-sm py-2"
+            >
+              <Printer className="w-4 h-4" strokeWidth={2} />
+              打印名单
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex flex-wrap items-center gap-2.5">
           <div className="relative">
             <Search
               className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
@@ -102,6 +185,7 @@ export default function ChildrenList() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
+
           <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100/70 border border-slate-200/60">
             <Filter className="w-4 h-4 text-slate-400 ml-2" strokeWidth={1.8} />
             {STATUS_FILTERS.map((f) => (
@@ -129,6 +213,40 @@ export default function ChildrenList() {
               </button>
             ))}
           </div>
+
+          <div className="relative">
+            <School className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.8} />
+            <select
+              value={schoolFilter}
+              onChange={(e) => setSchoolFilter(e.target.value)}
+              className="pl-9 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 focus:outline-none focus:bg-white focus:border-medical-300 focus:ring-2 focus:ring-medical-100 transition-all appearance-none cursor-pointer"
+            >
+              <option value="all">全部学校</option>
+              {schoolOptions.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="6 9 12 15 18 9" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+
+          <div className="relative">
+            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.8} />
+            <select
+              value={sourceFilter}
+              onChange={(e) => setSourceFilter(e.target.value as SourceType | 'all')}
+              className="pl-9 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 focus:outline-none focus:bg-white focus:border-medical-300 focus:ring-2 focus:ring-medical-100 transition-all appearance-none cursor-pointer"
+            >
+              <option value="all">全部来源</option>
+              {SOURCE_OPTIONS.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="6 9 12 15 18 9" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
         </div>
       </div>
 
@@ -139,12 +257,19 @@ export default function ChildrenList() {
           description="请使用左侧表单登记今日到院的儿童信息，或尝试调整筛选条件。"
         />
       ) : (
-        <div className="divide-y divide-slate-100/80">
+        <>
+          <div className="hidden print:block p-5 border-b border-slate-200">
+            <h2 className="text-lg font-bold text-slate-800">窝沟封闭今日登记名单</h2>
+            <p className="text-sm text-slate-500 mt-1">
+              日期：{formatDateCN(nowISO())} · 共 {todayList.length} 位儿童
+            </p>
+          </div>
+          <div className="divide-y divide-slate-100/80">
           {todayList.map((c, idx) => (
             <div
               key={c.id}
               className={clsx(
-                'px-5 py-4 flex items-center gap-4 transition-all duration-200 group',
+                'px-5 py-4 flex items-center gap-4 transition-all duration-200 group print:py-2',
                 idx % 2 === 1 ? 'bg-slate-50/40' : 'hover:bg-slate-50/70'
               )}
               style={{ animationDelay: `${idx * 30}ms` }}
@@ -211,7 +336,7 @@ export default function ChildrenList() {
                 </div>
               </div>
 
-              <div className="shrink-0 flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+              <div className="shrink-0 flex items-center gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity no-print">
                 <button
                   onClick={() => handleRemove(c.id, c.name)}
                   className="w-9 h-9 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-all"
@@ -236,7 +361,8 @@ export default function ChildrenList() {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

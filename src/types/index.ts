@@ -90,3 +90,9 @@ export const FOLLOWUP_STATUS_LABEL: Record<FollowupStatus, string> = {
   invalid: '号码无效',
   done: '已完成',
 };
+
+export const CHILD_STATUS_LABEL: Record<ChildStatus, string> = {
+  registered: '待处理',
+  in_progress: '操作中',
+  completed: '已完成',
+};
