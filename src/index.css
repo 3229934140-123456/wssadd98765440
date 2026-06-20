@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-800;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(148, 163, 184, 0.15) 1px, transparent 0);
+    background-size: 24px 24px;
+    background-attachment: fixed;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-100 rounded;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded hover:bg-slate-400 transition-colors;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-medical-500 text-white shadow-sm hover:bg-medical-600 hover:shadow-md focus:ring-medical-500 active:translate-y-px;
+  }
+  .btn-secondary {
+    @apply btn bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 focus:ring-slate-400;
+  }
+  .btn-success {
+    @apply btn bg-mint-500 text-white shadow-sm hover:bg-mint-600 focus:ring-mint-500;
+  }
+  .btn-warning {
+    @apply btn bg-warm-500 text-white shadow-sm hover:bg-warm-600 focus:ring-warm-500;
+  }
+  .btn-danger {
+    @apply btn bg-rose-500 text-white shadow-sm hover:bg-rose-600 focus:ring-rose-500;
+  }
+  .btn-ghost {
+    @apply btn text-slate-600 hover:bg-slate-100 focus:ring-slate-400;
+  }
+
+  .input,
+  .select,
+  .textarea {
+    @apply w-full px-3.5 py-2.5 rounded-lg bg-white border border-slate-200 text-sm text-slate-800 placeholder-slate-400 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:border-medical-500 hover:border-slate-300;
+  }
+  .textarea {
+    @apply resize-y min-h-[96px];
+  }
+
+  .card {
+    @apply bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden;
+  }
+  .card-hover {
+    @apply card transition-all duration-300 hover:shadow-card-hover hover:-translate-y-0.5;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium;
+  }
+}
+
+@layer utilities {
+  .animate-row-pulse {
+    animation: rowPulse 2.4s ease-in-out infinite;
+  }
+  @keyframes rowPulse {
+    0%, 100% {
+      box-shadow: inset 4px 0 0 #F59E0B, 0 0 0 0 rgba(245, 158, 11, 0);
+    }
+    50% {
+      box-shadow: inset 4px 0 0 #F59E0B, 0 0 0 6px rgba(245, 158, 11, 0.08);
+    }
+  }
+
+  .animate-row-overdue {
+    box-shadow: inset 4px 0 0 #EF4444;
+  }
+
+  .tooth-selected {
+    filter: drop-shadow(0 0 6px rgba(37, 99, 235, 0.5));
+  }
+
+  .print-slip {
+    @apply bg-white;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-slip,
+  .print-slip * {
+    visibility: visible;
+  }
+  .print-slip {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 24px;
+    box-shadow: none !important;
+    border: none !important;
+  }
+}
