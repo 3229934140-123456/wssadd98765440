@@ -8,6 +8,7 @@ import type {
   FollowupStatus,
   CallResultType,
 } from '@/types';
+import { STEP_ORDER } from '@/types';
 import {
   allInitialChildren,
   createInitialFollowups,
@@ -67,12 +68,42 @@ interface AppState {
   _hydrate: () => void;
 }
 
-const buildInitialState = () => ({
-  children: allInitialChildren(),
-  toothRecords: createInitialToothRecords(),
-  followups: createInitialFollowups(),
-  currentOperator: '李护士',
-});
+const isRecordQualified = (record: ToothRecord): boolean => {
+  if (record.selectedTeeth.length === 0) return false;
+  return record.selectedTeeth.every((tooth) =>
+    STEP_ORDER.every((step) => {
+      const found = record.steps.find(
+        (st) => st.tooth === tooth && st.step === step
+      );
+      return found?.completed;
+    })
+  );
+};
+
+const filterQualifiedFollowups = (
+  followups: FollowupRecord[],
+  records: ToothRecord[]
+): FollowupRecord[] => {
+  const qualifiedIds = new Set(
+    records.filter((r) => isRecordQualified(r)).map((r) => r.id)
+  );
+  return followups.filter((f) => qualifiedIds.has(f.toothRecordId));
+};
+
+const buildInitialState = () => {
+  const children = allInitialChildren();
+  const toothRecords = createInitialToothRecords();
+  const followups = filterQualifiedFollowups(
+    createInitialFollowups(),
+    toothRecords
+  );
+  return {
+    children,
+    toothRecords,
+    followups,
+    currentOperator: '李护士',
+  };
+};
 
 export const useAppStore = create<AppState>((set, get) => ({
   ...buildInitialState(),
@@ -210,6 +241,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   completeToothRecord: (recordId) => {
     const record = get().toothRecords.find((r) => r.id === recordId);
     if (!record) return;
+    if (!isRecordQualified(record)) {
+      return;
+    }
 
     set({
       toothRecords: get().toothRecords.map((r) =>
@@ -285,10 +319,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   _hydrate: () => {
     const data = loadFromStorage();
     if (data && data.children && data.children.length > 0) {
+      const toothRecords = data.toothRecords || [];
+      const followups = filterQualifiedFollowups(
+        data.followups || [],
+        toothRecords
+      );
       set({
         children: data.children,
-        toothRecords: data.toothRecords || [],
-        followups: data.followups || [],
+        toothRecords,
+        followups,
         currentOperator: data.currentOperator || '李护士',
       });
     }

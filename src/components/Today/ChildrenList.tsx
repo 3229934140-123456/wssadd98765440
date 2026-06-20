@@ -107,6 +107,7 @@ export default function ChildrenList() {
       let missingCount = 0;
       let reviewDate = '—';
       let followupStatus = '—';
+      let qualified = false;
       if (tr) {
         selectedCount = tr.selectedTeeth.length;
         doneCount = tr.selectedTeeth.filter((t) =>
@@ -115,9 +116,15 @@ export default function ChildrenList() {
         missingCount = selectedCount * STEP_ORDER.length - tr.selectedTeeth.reduce((acc, t) =>
           acc + STEP_ORDER.filter((s) => tr.steps.find((st: ToothStep) => st.tooth === t && st.step === s)?.completed).length, 0
         );
-        reviewDate = tr.reviewDate || '—';
+        qualified =
+          selectedCount > 0 &&
+          doneCount === selectedCount &&
+          !!tr.completedAt;
+        if (qualified) {
+          reviewDate = tr.reviewDate || '—';
+        }
       }
-      if (fu) {
+      if (qualified && fu) {
         followupStatus = FOLLOWUP_STATUS_LABEL[fu.status];
       }
       return [

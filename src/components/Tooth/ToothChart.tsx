@@ -40,17 +40,21 @@ const buildPositions = (): ToothPos[] => {
 export default function ToothChart({ selectedTeeth, onToggle, disabled }: Props) {
   const positions = buildPositions();
 
-  const svgW = 1100;
-  const svgH = 420;
+  const padL = 60;
+  const padR = 60;
+  const padT = 40;
+  const padB = 50;
   const cellW = 116;
   const cellH = 175;
-  const gapX = 8;
+  const gapX = 10;
   const gapY = 28;
-  const midlineGap = 18;
+  const midlineGap = 20;
 
   const totalW = cellW * 16 + gapX * 15 + midlineGap;
-  const startX = (svgW - totalW) / 2;
-  const startY = (svgH - (cellH * 2 + gapY)) / 2 + 8;
+  const svgW = totalW + padL + padR;
+  const svgH = cellH * 2 + gapY + padT + padB;
+  const startX = padL;
+  const startY = padT;
 
   const getX = (col: number) => {
     const offset = col * (cellW + gapX);
@@ -88,13 +92,20 @@ export default function ToothChart({ selectedTeeth, onToggle, disabled }: Props)
         </div>
       </div>
 
-      <div className="overflow-x-auto pb-3 -mx-6 px-6 scroll-smooth"
-        style={{ WebkitOverflowScrolling: 'touch' }}
+      <div
+        className="overflow-x-auto pb-3 scroll-smooth"
+        style={{
+          WebkitOverflowScrolling: 'touch',
+          marginLeft: '-24px',
+          marginRight: '-24px',
+          paddingLeft: '24px',
+          paddingRight: '24px',
+        }}
       >
-        <div style={{ minWidth: `${svgW}px`, width: '100%', maxWidth: `${svgW * 1.3}px` }}>
+        <div style={{ minWidth: `${svgW}px`, width: `${svgW}px` }}>
           <svg
             viewBox={`0 0 ${svgW} ${svgH}`}
-            width="100%"
+            width={svgW}
             height={svgH}
             preserveAspectRatio="xMinYMid meet"
             style={{ display: 'block' }}
@@ -249,10 +260,10 @@ export default function ToothChart({ selectedTeeth, onToggle, disabled }: Props)
                   style={{ transformOrigin: `${cx}px ${y + cellH / 2}px` }}
                 >
                   <rect
-                    x={x}
-                    y={y}
-                    width={cellW}
-                    height={cellH}
+                    x={x - 8}
+                    y={y - 10}
+                    width={cellW + 16}
+                    height={cellH + 20}
                     fill="transparent"
                     className="pointer-events-auto"
                   />

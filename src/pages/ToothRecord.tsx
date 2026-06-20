@@ -160,6 +160,12 @@ export default function ToothRecord() {
 
   const isCompleted = !!record.completedAt;
 
+  useEffect(() => {
+    if (isCompleted) {
+      setShowSlip(true);
+    }
+  }, [isCompleted]);
+
   return (
     <div className="p-8 max-w-[1600px] mx-auto space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4 animate-fade-in-up">
@@ -419,7 +425,7 @@ export default function ToothRecord() {
         </div>
 
         <div className="xl:col-span-4 space-y-6">
-          {showSlip && isCompleted ? (
+          {isCompleted ? (
             <div
               className="animate-fade-in-up"
               style={{ animationDelay: '100ms' }}

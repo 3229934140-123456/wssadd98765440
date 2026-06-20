@@ -126,17 +126,6 @@ export const createInitialFollowups = (): FollowupRecord[] => [
     contactCount: 0,
   },
   {
-    id: 'f002',
-    childId: 'c002',
-    toothRecordId: 't002',
-    reviewDate: dayjs().add(5, 'day').format('YYYY-MM-DD'),
-    status: 'appointed',
-    callResult: '已预约',
-    contactedAt: dayjs().hour(14).minute(0).toISOString(),
-    contactCount: 1,
-    remark: '预约6月28日上午9点复查',
-  },
-  {
     id: 'f003',
     childId: 'c_hist1',
     toothRecordId: 't_hist1',
